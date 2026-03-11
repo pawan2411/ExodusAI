@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# EvacuAI Deployment Script
+# ExodusAI Deployment Script
 # Builds and deploys to Google Cloud Run + Firebase Hosting.
 #
 # Usage:
@@ -13,14 +13,14 @@ set -euo pipefail
 # Configuration
 PROJECT="${GOOGLE_CLOUD_PROJECT:?Set GOOGLE_CLOUD_PROJECT environment variable}"
 REGION="${GOOGLE_CLOUD_REGION:-us-central1}"
-SERVICE_NAME="evacuai-backend"
-REPO_NAME="evacuai"
+SERVICE_NAME="exodusai-backend"
+REPO_NAME="exodusai"
 IMAGE_NAME="backend"
 TAG="${IMAGE_TAG:-latest}"
 
 REGISTRY="${REGION}-docker.pkg.dev/${PROJECT}/${REPO_NAME}/${IMAGE_NAME}:${TAG}"
 
-echo "=== EvacuAI Deployment ==="
+echo "=== ExodusAI Deployment ==="
 echo "Project:  ${PROJECT}"
 echo "Region:   ${REGION}"
 echo "Image:    ${REGISTRY}"
@@ -34,7 +34,7 @@ gcloud artifacts repositories create "${REPO_NAME}" \
     --repository-format=docker \
     --location="${REGION}" \
     --project="${PROJECT}" \
-    --description="EvacuAI Docker images"
+    --description="ExodusAI Docker images"
 
 # 2. Build and push Docker image
 echo ""
@@ -63,7 +63,7 @@ gcloud run deploy "${SERVICE_NAME}" \
     --min-instances=0 \
     --max-instances=5 \
     --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT},FEED_MODE=simulation,TRAFFIC_MODE=mock" \
-    --set-secrets="GOOGLE_API_KEY=evacuai-google-api-key:latest,ROUTES_API_KEY=evacuai-routes-api-key:latest"
+    --set-secrets="GOOGLE_API_KEY=exodusai-google-api-key:latest,ROUTES_API_KEY=exodusai-routes-api-key:latest"
 
 # 4. Get the service URL
 echo ""

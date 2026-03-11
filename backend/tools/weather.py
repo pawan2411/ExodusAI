@@ -6,7 +6,7 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-NWS_USER_AGENT = "EvacuAI/1.0 (evacuation-assistant)"
+NWS_USER_AGENT = "ExodusAI/1.0 (evacuation-assistant)"
 
 
 async def get_weather_alerts(latitude: float, longitude: float) -> dict:

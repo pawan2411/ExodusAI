@@ -1,4 +1,9 @@
-"""Gemini Live API session wrapper — text-mode simulation agent."""
+"""Gemini Live API session wrapper — text-mode simulation agent.
+
+Uses Google Cloud Vertex AI as the backend for Gemini model access,
+providing enterprise-grade authentication via service accounts and
+integration with GCP's AI platform.
+"""
 
 import asyncio
 import logging
@@ -17,19 +22,37 @@ DEFAULT_MODEL = "gemini-2.0-flash-live-001"
 
 
 class GeminiLiveSession:
-    """Manages a single Gemini Live API session (text in, text out + tools)."""
+    """Manages a single Gemini Live API session via Vertex AI (text in, text out + tools)."""
 
     def __init__(self, simulation_state: Optional[dict] = None):
-        api_key = os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            raise ValueError("GOOGLE_API_KEY environment variable is required")
+        # Vertex AI requires GCP project and location
+        project = os.getenv("GOOGLE_CLOUD_PROJECT")
+        location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 
-        self.client = genai.Client(api_key=api_key, http_options={"api_version": "v1alpha"})
+        if not project:
+            raise ValueError(
+                "GOOGLE_CLOUD_PROJECT environment variable is required. "
+                "Set it to your GCP project ID for Vertex AI access."
+            )
+
+        # Initialize the GenAI client with Vertex AI backend
+        # Authentication uses Application Default Credentials (ADC):
+        #   - Local dev: `gcloud auth application-default login`
+        #   - Cloud Run:  attached service account (automatic)
+        self.client = genai.Client(
+            vertexai=True,
+            project=project,
+            location=location,
+            http_options={"api_version": "v1alpha"},
+        )
         self.model = os.getenv("GEMINI_MODEL", DEFAULT_MODEL)
         self.session = None
         self._closed = False
         # Mutable dict holding {"simulation": CityBlock | None}
         self.simulation_state = simulation_state or {}
+        logger.info(
+            f"Vertex AI client initialized (project={project}, location={location})"
+        )
 
     async def connect(self):
         """Establish the Live API session in text mode."""

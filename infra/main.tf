@@ -13,23 +13,23 @@ provider "google" {
 }
 
 # Artifact Registry for Docker images
-resource "google_artifact_registry_repository" "evacuai" {
+resource "google_artifact_registry_repository" "exodusai" {
   location      = var.region
-  repository_id = "evacuai"
+  repository_id = "exodusai"
   format        = "DOCKER"
-  description   = "EvacuAI Docker images"
+  description   = "ExodusAI Docker images"
 }
 
 # Secret Manager secrets
 resource "google_secret_manager_secret" "google_api_key" {
-  secret_id = "evacuai-google-api-key"
+  secret_id = "exodusai-google-api-key"
   replication {
     auto {}
   }
 }
 
 resource "google_secret_manager_secret" "routes_api_key" {
-  secret_id = "evacuai-routes-api-key"
+  secret_id = "exodusai-routes-api-key"
   replication {
     auto {}
   }
@@ -45,7 +45,7 @@ resource "google_cloud_run_v2_service" "backend" {
     timeout          = "3600s"
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/evacuai/backend:${var.image_tag}"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/exodusai/backend:${var.image_tag}"
 
       ports {
         container_port = 8080
@@ -101,7 +101,7 @@ resource "google_cloud_run_v2_service" "backend" {
   }
 
   depends_on = [
-    google_artifact_registry_repository.evacuai,
+    google_artifact_registry_repository.exodusai,
   ]
 }
 
@@ -117,10 +117,10 @@ resource "google_cloud_run_v2_service_iam_member" "public" {
 # Outputs
 output "backend_url" {
   value       = google_cloud_run_v2_service.backend.uri
-  description = "URL of the deployed EvacuAI backend"
+  description = "URL of the deployed ExodusAI backend"
 }
 
 output "artifact_registry" {
-  value       = "${var.region}-docker.pkg.dev/${var.project_id}/evacuai"
+  value       = "${var.region}-docker.pkg.dev/${var.project_id}/exodusai"
   description = "Artifact Registry path for Docker images"
 }

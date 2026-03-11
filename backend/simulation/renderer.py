@@ -58,7 +58,7 @@ def _draw_stats_bar(frame, state):
     running = state.get("running", False)
 
     # Title
-    cv2.putText(frame, "EvacuAI", (16, 36), FONT, 0.85, ACCENT, 2)
+    cv2.putText(frame, "ExodusAI", (16, 36), FONT, 0.85, ACCENT, 2)
 
     # Status label
     if running:

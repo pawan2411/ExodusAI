@@ -1,5 +1,5 @@
 /**
- * EvacuAI Frontend — Simulation Controller
+ * ExodusAI Frontend — Simulation Controller
  */
 
 import { GeminiClient } from './gemini-client.js';
@@ -114,7 +114,7 @@ function disconnect() {
 function onConnected() {
     isConnected = true;
     setStatus('Connected', 'ok');
-    addCard('system', 'Connected to EvacuAI backend. Apply config to initialize simulation.');
+    addCard('system', 'Connected to ExodusAI backend. Apply config to initialize simulation.');
     updateButtons();
     btnConnect.textContent = 'Disconnect';
     btnConnect.className = 'btn-danger';

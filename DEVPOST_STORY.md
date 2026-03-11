@@ -1,103 +1,52 @@
-# ExodusAI — Project Story
+# ExodusAI - Project Story
 
 ## Inspiration
 
-Every major evacuation in history — Katrina, Paradise wildfire, the Fukushima disaster — shared one fatal flaw: **decisions were made too slowly**. Humans at command centers received fragmented information, drew on gut instinct, and issued orders minutes after the window to act had already closed.
+Every major evacuation in history - Katrina, the Paradise wildfire, Fukushima - shared one fatal flaw: **decisions were made too slowly**. Commanders at emergency centers received fragmented information, relied on gut instinct, and issued orders minutes after the window to act had already closed. We asked ourselves: *what if an AI could watch the entire evacuation unfold in real time and make every routing decision faster than any human ever could?* That question became ExodusAI.
 
-We asked a simple but terrifying question:
+## What it does
 
-> *What if an AI could watch the entire evacuation unfold — in real time — and make every routing decision faster than any human ever could?*
+ExodusAI is a real-time, AI-commanded city block evacuation simulation. The engine generates genuine chaos - crowds forming, exits clogging, highways backing up - and **Gemini Live API acts as the autonomous evacuation commander**, watching two simultaneous live video feeds (a top-down simulation canvas and a Google Maps-style traffic view) and issuing binding commands to minimize total evacuation time.
 
-That question became ExodusAI.
+Gemini doesn't just observe - it **acts**. Through live function calling, it redirects building occupants to less congested exits, opens and closes exit gates, adjusts highway outbound capacity, and blocks inbound traffic. Every decision takes effect within the next render frame, so Gemini can watch its own actions play out and continuously adapt its strategy.
 
----
+## How we built it
 
-## What We Built
+- **Simulation Engine**: A custom agent-based model in Python where each person moves independently toward their assigned exit. The engine runs at 10 Hz with configurable buildings, exits, population, and highway capacity.
+- **Dual Video Streams**: OpenCV renders two views - a top-down simulation canvas and a traffic map - streamed to Gemini Live API at ~3 fps and ~0.5 fps respectively via `send_realtime_input`.
+- **Gemini Live API**: Using `gemini-2.0-flash-live-001` in TEXT mode with function calling. Gemini receives continuous video frames, congestion alerts, and milestone updates, and responds with both text reasoning and tool calls (`control_exit`, `control_highway`, `redirect_building`, `get_status`).
+- **Backend**: FastAPI with three concurrent asyncio tasks per session - client receiver, Gemini streamer, and simulation runner - all communicating over WebSockets.
+- **Frontend**: Vanilla JS with a 3-panel layout (Config | Simulation Canvas | AI Decisions) for real-time visualization.
+- **Deployment**: Dockerized and deployed on Google Cloud Run via Terraform.
 
-ExodusAI is a real-time, AI-commanded city block evacuation simulation. The local engine generates genuine chaos — crowds forming, exits clogging, highways backing up — and **Gemini Live API acts as the autonomous commander**, watching two simultaneous live video feeds and issuing binding decisions to minimize total evacuation time.
+## Challenges we ran into
 
-### Dual Live Video Feeds
+**Gemini seeing its own decisions** - The hardest problem. When Gemini issues a `redirect_building` command, if the next frame arrives before people visibly start moving, Gemini would issue the same command again. We solved this by sending tool results back immediately and including state summaries in alert texts - giving Gemini textual confirmation before the visual update arrives.
 
-Gemini receives two continuous video streams:
+**Frame rate tuning** - Too many frames flooded the Live API with no benefit. Too few, and Gemini lacked the temporal context to distinguish a developing bottleneck from a resolved one. We landed on 3 fps for simulation and 0.5 fps for the traffic map - enough for temporal reasoning without overwhelming the session.
 
-1. **Simulation View** — a top-down rendered canvas showing buildings, moving agents (people), exit markers colored by congestion, and a live highway strip
-2. **Traffic Map** — a Google Maps-style dark-mode view showing road-level congestion around the evacuation zone, colored approach roads, and the expressway with inbound/outbound lane traffic
+**Dual-view coherence** - The two renderers use different coordinate systems and visual languages. Teaching Gemini to correlate both views required careful system prompt engineering, explicitly labeling what each visual element means in each view.
 
-Both frames stream at ~3 fps via `send_realtime_input`, giving Gemini genuine temporal context — it sees the situation *evolve*, not just snapshots.
+**Making Gemini proactive** - By default, language models are reactive. Getting Gemini to continuously issue commands required framing the task as a time-optimization competition: every second of delay is measurable, and its score is the total evacuation time.
 
-### Agent-Based Simulation Engine
+## Accomplishments that we're proud of
 
-The evacuation is modeled as a multi-agent system. Each person $p_i$ moves toward their assigned exit $e_j$ with velocity:
+- Gemini genuinely **reasons over time** - it notices congestion building across multiple frames, acts, and then monitors whether its intervention worked before adjusting further.
+- The full loop - see problem → call tool → observe result - happens in **under 3 seconds** of real time.
+- The dual-view architecture gives Gemini a richer understanding of both micro (people movement) and macro (road traffic) dynamics, producing measurably better decisions than a single view alone.
+- The entire system runs as a single WebSocket session with no polling, no queues, and no external databases - just pure real-time streaming.
 
-$$\vec{v}_i = s_i \cdot \frac{\vec{e}_j - \vec{p}_i}{\|\vec{e}_j - \vec{p}_i\|}$$
+## What we learned
 
-where $s_i \sim \mathcal{U}(2.2,\ 4.0)$ px/tick is individual walking speed. The highway processes evacuees at rate:
+- The Gemini Live API is built for **continuous visual reasoning**, not just single-image captioning. Streaming frames gives the model context over time that fundamentally changes response quality.
+- Function calling inside a Live session is surprisingly powerful: the model can see a problem, call a tool to fix it, and observe the result - all within seconds.
+- Simulation fidelity directly impacts AI decision quality. Richer visuals (traffic colors, queue indicators, two views) produced more specific and correct decisions than a plain canvas alone.
+- Prompt engineering for a real-time agent is very different from static prompts - you need to make the AI feel **urgency** and give it a measurable objective to optimize against.
 
-$$R_{out} = \left\lfloor \frac{C_{highway}}{T_{fps}} \right\rfloor \text{ people/tick}$$
+## What's next for ExodusAI
 
-where $C_{highway}$ is the configurable outbound capacity (ppl/sec) and $T_{fps} = 10$ ticks/sec.
-
-Exit congestion is flagged when queue length $q_j > 15$, triggering an immediate alert to Gemini.
-
-### Gemini as the Commander
-
-Gemini uses **function calling** to directly mutate simulation state:
-
-| Tool | Effect |
-|---|---|
-| `control_exit` | Open or close any exit gate |
-| `control_highway` | Adjust outbound capacity or block inbound lanes |
-| `redirect_building` | Reroute all occupants of a building to a target exit |
-| `get_status` | Poll current evacuation statistics |
-
-Every tool call is reflected back in the live canvas within the next render tick — Gemini can watch its own decisions take effect.
-
----
-
-## How We Built It
-
-```
-Browser (Vanilla JS)
-  └─ WebSocket ──► FastAPI Backend (Python)
-                      ├─ CityBlock simulation engine (asyncio, 10 Hz)
-                      ├─ OpenCV renderer → JPEG frames
-                      ├─ Maps renderer → Google Maps-style traffic JPEG
-                      └─ GeminiLiveSession
-                           ├─ send_realtime_input (sim frames, 3 fps)
-                           ├─ send_realtime_input (traffic map, 0.5 fps)
-                           ├─ TEXT response modality
-                           └─ Function calling → simulation mutations
-```
-
-The backend runs three concurrent `asyncio` tasks per session:
-- **Client receiver** — handles config, start, pause, reset, text queries
-- **Gemini streamer** — forwards Gemini text decisions and tool actions to the browser
-- **Simulation runner** — ticks the engine, renders frames, feeds Gemini
-
----
-
-## Challenges
-
-**1. Gemini seeing its own decisions**
-The hardest problem: Gemini issues a `redirect_building` command, but if the next frame arrives before people start visibly moving, Gemini might issue the same command again. We solved this by sending tool results back immediately and including state summaries in alert texts — giving Gemini textual confirmation even before the visual update arrives.
-
-**2. Frame rate vs. model responsiveness**
-Sending too many frames flooded the Live API session with no benefit. Too few, and Gemini lacked temporal context to distinguish a developing bottleneck from a resolved one. We landed on **3 fps for simulation, 0.5 fps for traffic map** — enough for temporal reasoning without overwhelming the session.
-
-**3. Dual-view coherence**
-The two renderers (simulation canvas + traffic map) use different coordinate systems and visual languages. Teaching Gemini to correlate what it sees in both views required careful system prompt engineering — explicitly labeling what each visual element means in each view.
-
-**4. Making Gemini act proactively**
-By default, language models are reactive. Getting Gemini to continuously issue commands — not just when alerted — required framing the task as a **time-optimization competition**: every second of delay is measurable, and Gemini's score is the total evacuation time.
-
----
-
-## What We Learned
-
-- The Gemini Live API is genuinely designed for continuous visual reasoning — not just single-image captioning. Streaming frames gives the model *context over time* that fundamentally changes response quality.
-- Function calling inside a Live session is surprisingly powerful: the model can see a problem, call a tool to fix it, and observe the result — all within a few seconds of real time.
-- Simulation fidelity matters for AI decision quality. A richer visual environment (two views, traffic colors, queue indicators) produced measurably more specific and correct Gemini decisions than a plain canvas alone.
-
----
-
-*Built for the Gemini Live Agent Challenge · Category: Live Agents*
+- **Real geospatial data** - Replace the synthetic city block with real building footprints and road networks from OpenStreetMap, enabling simulations of actual neighborhoods.
+- **Multi-hazard scenarios** - Add fire spread, flooding, and earthquake aftershock models so Gemini must dynamically reroute around evolving danger zones.
+- **Multi-agent coordination** - Deploy multiple Gemini agents managing different sectors of a larger evacuation, with a coordinator agent resolving conflicts.
+- **Voice mode** - Leverage Gemini Live's audio modality so emergency commanders can have a live voice conversation with the AI while it simultaneously watches the simulation.
+- **Hardware integration** - Connect to real traffic camera feeds and IoT sensors so ExodusAI can transition from simulation to a real-world decision-support tool for emergency management agencies.

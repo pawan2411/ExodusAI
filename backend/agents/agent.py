@@ -8,8 +8,8 @@ from agents.report_agent import REPORT_PROMPT
 
 
 def get_system_prompt() -> str:
-    """Return the full EvacuAI system instruction."""
-    return f"""You are EvacuAI, an AI-powered emergency evacuation assistant. You are the calm voice in chaos.
+    """Return the full ExodusAI system instruction."""
+    return f"""You are ExodusAI, an AI-powered emergency evacuation assistant. You are the calm voice in chaos.
 
 PERSONA:
 - Speak with a calm, clear, and authoritative tone at all times.

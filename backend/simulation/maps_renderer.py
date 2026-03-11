@@ -25,7 +25,7 @@ TEXT_WHITE  = (235, 240, 250)
 TEXT_GRAY   = (130, 138, 160)
 TEXT_ROAD   = (210, 218, 235)   # Road labels
 LABEL_BG    = (42, 45, 58)      # Label pill background
-ACCENT      = (100, 150, 255)   # EvacuAI pin accent
+ACCENT      = (100, 150, 255)   # ExodusAI pin accent
 
 # ── Traffic colors (BGR) ────────────────────────────────────────────
 T_CLEAR    = (60, 200, 80)      # Green
@@ -341,12 +341,12 @@ def _draw_exits(frame, exits: list, state: dict):
 
 
 def _draw_hud(frame, stats: dict, hw: dict):
-    """Draw the HUD overlay (top-left info box + compass + EvacuAI badge)."""
-    # ── Top-right: EvacuAI badge ──
+    """Draw the HUD overlay (top-left info box + compass + ExodusAI badge)."""
+    # ── Top-right: ExodusAI badge ──
     badge_x, badge_y = W - 115, 10
     cv2.rectangle(frame, (badge_x, badge_y), (W - 8, badge_y + 32), (22, 24, 35), -1)
     cv2.rectangle(frame, (badge_x, badge_y), (W - 8, badge_y + 32), BLOCK_BDR, 1)
-    cv2.putText(frame, "Evacu", (badge_x + 5, badge_y + 14), FONT_SMALL, 0.45, TEXT_WHITE, 1)
+    cv2.putText(frame, "Exodus", (badge_x + 5, badge_y + 14), FONT_SMALL, 0.45, TEXT_WHITE, 1)
     cv2.putText(frame, "AI",    (badge_x + 53, badge_y + 14), FONT_SMALL, 0.45, ACCENT, 1)
     cv2.putText(frame, "Traffic View", (badge_x + 5, badge_y + 27), FONT_SMALL, 0.33, TEXT_GRAY, 1)
 

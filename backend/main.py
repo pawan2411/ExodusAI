@@ -1,4 +1,4 @@
-"""EvacuAI Backend — FastAPI server with simulation engine and Gemini Live API."""
+"""ExodusAI Backend — FastAPI server with simulation engine and Gemini Live API."""
 
 import asyncio
 import base64
@@ -22,9 +22,9 @@ logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "info").upper(),
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
 )
-logger = logging.getLogger("evacuai")
+logger = logging.getLogger("exodusai")
 
-app = FastAPI(title="EvacuAI", version="2.0.0")
+app = FastAPI(title="ExodusAI", version="2.0.0")
 
 SIM_TICK_INTERVAL = 0.10    # 10 ticks/second
 
@@ -36,7 +36,7 @@ MAPS_CLIENT_INTERVAL = 15   # Send maps view to browser every 15 ticks (~1.5 s)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "evacuai-backend", "version": "2.0.0"}
+    return {"status": "ok", "service": "exodusai-backend", "version": "2.0.0"}
 
 
 @app.websocket("/ws")

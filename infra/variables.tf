@@ -12,7 +12,7 @@ variable "region" {
 variable "service_name" {
   description = "Name of the Cloud Run service"
   type        = string
-  default     = "evacuai-backend"
+  default     = "exodusai-backend"
 }
 
 variable "image_tag" {

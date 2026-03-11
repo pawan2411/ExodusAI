@@ -92,7 +92,7 @@ class VideoSimulator:
 
         # Title
         font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.putText(frame, "EvacuAI - Simulation Mode", (50, 60),
+        cv2.putText(frame, "ExodusAI - Simulation Mode", (50, 60),
                     font, 1.0, (200, 200, 200), 2)
 
         # Floor plan outline

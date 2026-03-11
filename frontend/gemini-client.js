@@ -1,5 +1,5 @@
 /**
- * GeminiClient: WebSocket client for communicating with the EvacuAI backend.
+ * GeminiClient: WebSocket client for communicating with the ExodusAI backend.
  */
 
 export class GeminiClient {
