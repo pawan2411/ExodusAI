@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EvacuAI — Emergency Evacuation Simulation</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:        #0d0f1a;
+            --bg2:       #151825;
+            --bg3:       #1e2235;
+            --border:    #2a2e45;
+            --text:      #d8dce8;
+            --text2:     #8892aa;
+            --accent:    #4a9eff;
+            --success:   #3fcb6e;
+            --warning:   #f4a922;
+            --danger:    #e84545;
+            --font:      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+        }
+
+        /* ── Layout ── */
+        #app {
+            display: grid;
+            grid-template-rows: 48px 1fr;
+            height: 100vh;
+        }
+
+        /* ── Header ── */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 18px;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+        }
+        header .logo { font-size: 1.15rem; font-weight: 700; letter-spacing: 1px; }
+        header .logo span { color: var(--accent); }
+        #conn-status {
+            font-size: 0.75rem; padding: 3px 10px; border-radius: 10px;
+            background: var(--bg3); color: var(--text2);
+            transition: all 0.3s;
+        }
+        #conn-status.ok { background: rgba(63,203,110,0.15); color: var(--success); }
+        #conn-status.err { background: rgba(232,69,69,0.15); color: var(--danger); }
+
+        /* ── Main 3-panel grid ── */
+        main {
+            display: grid;
+            grid-template-columns: 240px 1fr 300px;
+            overflow: hidden;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+            overflow: hidden;
+        }
+        .panel:last-child { border-right: none; }
+
+        .panel-title {
+            padding: 8px 14px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text2);
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        /* ── Config panel ── */
+        #config-panel { background: var(--bg); }
+
+        .config-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px 14px 0;
+        }
+
+        .param-group {
+            margin-bottom: 16px;
+        }
+        .param-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text2);
+            margin-bottom: 5px;
+        }
+        .param-label strong { color: var(--text); }
+        .param-val {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--accent);
+            min-width: 36px;
+            text-align: right;
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: var(--accent);
+            height: 4px;
+            cursor: pointer;
+        }
+
+        .config-footer {
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border-top: 1px solid var(--border);
+        }
+
+        .btn-row { display: flex; gap: 8px; }
+
+        button {
+            flex: 1;
+            padding: 8px 10px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, background 0.2s;
+        }
+        button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+        .btn-primary   { background: var(--accent);   color: #fff; }
+        .btn-success   { background: var(--success);  color: #fff; }
+        .btn-warning   { background: var(--warning);  color: #111; }
+        .btn-danger    { background: var(--danger);   color: #fff; }
+        .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+
+        /* ── Simulation canvas panel ── */
+        #sim-panel {
+            display: grid;
+            grid-template-rows: 1fr 200px;
+            background: #000;
+            position: relative;
+        }
+        #sim-top {
+            position: relative;
+            overflow: hidden;
+            background: #000;
+        }
+        #sim-canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        .sim-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text2);
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+        .sim-placeholder .icon { font-size: 3rem; opacity: 0.3; }
+
+        /* Maps panel */
+        #maps-panel {
+            background: #0a1020;
+            border-top: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+        #maps-panel .panel-title {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            z-index: 2;
+            background: rgba(10,16,32,0.85);
+        }
+        #maps-canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        .maps-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text2);
+            font-size: 0.8rem;
+        }
+
+        /* ── AI panel ── */
+        #ai-panel { background: var(--bg); }
+
+        /* Stats bar */
+        #stats-bar {
+            padding: 10px 12px;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            margin-bottom: 4px;
+        }
+        .stat-label { color: var(--text2); }
+        .stat-value { font-weight: 700; color: var(--text); }
+        .stat-value.ok  { color: var(--success); }
+        .stat-value.warn { color: var(--warning); }
+        .stat-value.bad  { color: var(--danger); }
+
+        #evac-progress-bar {
+            height: 6px;
+            background: var(--bg3);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+        #evac-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--success);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        /* Decisions log */
+        #decisions-log {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .decision-card {
+            padding: 8px 10px;
+            background: var(--bg2);
+            border-radius: 6px;
+            border-left: 3px solid var(--accent);
+            font-size: 0.8rem;
+            line-height: 1.45;
+            color: var(--text);
+            animation: fadeIn 0.3s ease;
+        }
+        .decision-card.action { border-left-color: var(--warning); }
+        .decision-card.alert  { border-left-color: var(--danger); }
+        .decision-card.system { border-left-color: var(--border); color: var(--text2); font-style: italic; }
+
+        .card-time {
+            font-size: 0.68rem;
+            color: var(--text2);
+            margin-top: 3px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Text input */
+        #ai-input-row {
+            padding: 10px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        #ai-text {
+            flex: 1;
+            padding: 7px 10px;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.8rem;
+            outline: none;
+        }
+        #ai-text:focus { border-color: var(--accent); }
+        #ai-send { padding: 7px 14px; flex-shrink: 0; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        /* Legend */
+        #legend {
+            padding: 8px 12px;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .legend-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text2); margin-bottom: 4px; }
+        .legend-items { display: flex; flex-wrap: wrap; gap: 8px; }
+        .legend-item { display: flex; align-items: center; gap: 4px; font-size: 0.7rem; color: var(--text2); }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <header>
+        <div class="logo">Evacu<span>AI</span></div>
+        <div id="conn-status">Disconnected</div>
+    </header>
+
+    <main>
+        <!-- ── Config Panel ── -->
+        <div class="panel" id="config-panel">
+            <div class="panel-title">Simulation Config</div>
+            <div class="config-body">
+
+                <div class="param-group">
+                    <div class="param-label">
+                        <strong>Buildings</strong>
+                        <span class="param-val" id="val-buildings">5</span>
+                    </div>
+                    <input type="range" id="sl-buildings" min="2" max="10" value="5">
+                </div>
+
+                <div class="param-group">
+                    <div class="param-label">
+                        <strong>Exits</strong>
+                        <span class="param-val" id="val-exits">3</span>
+                    </div>
+                    <input type="range" id="sl-exits" min="1" max="6" value="3">
+                </div>
+
+                <div class="param-group">
+                    <div class="param-label">
+                        <strong>Avg Population / Building</strong>
+                        <span class="param-val" id="val-pop">50</span>
+                    </div>
+                    <input type="range" id="sl-pop" min="10" max="200" step="10" value="50">
+                </div>
+
+                <div class="param-group">
+                    <div class="param-label">
+                        <strong>Highway Capacity (ppl/s)</strong>
+                        <span class="param-val" id="val-hw">20</span>
+                    </div>
+                    <input type="range" id="sl-hw" min="5" max="100" step="5" value="20">
+                </div>
+
+            </div>
+
+            <div class="config-footer">
+                <div class="btn-row">
+                    <button class="btn-secondary" id="btn-randomize">Randomize</button>
+                    <button class="btn-primary"   id="btn-connect">Connect</button>
+                </div>
+                <button class="btn-success" id="btn-apply" disabled>Apply Config</button>
+                <div class="btn-row">
+                    <button class="btn-warning" id="btn-start"  disabled>Start</button>
+                    <button class="btn-secondary" id="btn-pause" disabled>Pause</button>
+                    <button class="btn-secondary" id="btn-reset" disabled>Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Simulation Canvas ── -->
+        <div class="panel" id="sim-panel" style="border:none;">
+            <!-- Top: simulation view -->
+            <div id="sim-top">
+                <canvas id="sim-canvas"></canvas>
+                <div class="sim-placeholder" id="sim-placeholder">
+                    <div class="icon">🏙</div>
+                    <div>Configure and connect to start simulation</div>
+                </div>
+            </div>
+            <!-- Bottom: maps / traffic view -->
+            <div id="maps-panel">
+                <div class="panel-title">Traffic Map (Simulated Google Maps)</div>
+                <canvas id="maps-canvas"></canvas>
+                <div class="maps-placeholder" id="maps-placeholder">Awaiting traffic data…</div>
+            </div>
+        </div>
+
+        <!-- ── AI Decisions Panel ── -->
+        <div class="panel" id="ai-panel">
+            <div class="panel-title">Gemini AI Commander</div>
+
+            <div id="stats-bar">
+                <div class="stat-row">
+                    <span class="stat-label">Mission Time</span>
+                    <span class="stat-value" id="stat-time" style="font-size:1.1rem;color:var(--accent)">0s</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Evacuated</span>
+                    <span class="stat-value" id="stat-evac">— / —</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Progress</span>
+                    <span class="stat-value" id="stat-pct">0%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">In Transit</span>
+                    <span class="stat-value" id="stat-transit">—</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Highway</span>
+                    <span class="stat-value" id="stat-hw">—</span>
+                </div>
+                <div id="evac-progress-bar"><div id="evac-progress-fill"></div></div>
+            </div>
+
+            <div id="decisions-log"></div>
+
+            <div id="legend">
+                <div class="legend-title">Legend</div>
+                <div class="legend-items">
+                    <div class="legend-item"><div class="legend-dot" style="background:#28d2be"></div>Evacuating</div>
+                    <div class="legend-item"><div class="legend-dot" style="background:#3a6ee8"></div>Queued</div>
+                    <div class="legend-item"><div class="legend-dot" style="background:#28c850"></div>Exit Open</div>
+                    <div class="legend-item"><div class="legend-dot" style="background:#e02020"></div>Exit Closed</div>
+                    <div class="legend-item"><div class="legend-dot" style="background:#e08c1e"></div>Congested</div>
+                </div>
+            </div>
+
+            <div id="ai-input-row">
+                <input type="text" id="ai-text" placeholder="Ask Gemini…" disabled>
+                <button class="btn-primary" id="ai-send" disabled>Ask</button>
+            </div>
+        </div>
+    </main>
+</div>
+<script type="module" src="main.js"></script>
+</body>
+</html>
