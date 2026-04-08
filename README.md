@@ -13,7 +13,7 @@ Built for the **[Gemini Live Agent Challenge](https://geminiliveagentchallenge.d
 +----------------------------+--------------------------------+
                              |  WebSocket
 +----------------------------v--------------------------------+
-|                 FastAPI Backend (Cloud Run)                   |
+|                 FastAPI Backend (Cloud Run)                  |
 |                                                              |
 |   CityBlock Simulation  -->  OpenCV Renderer  -->  JPEG      |
 |          ^ tool actions              | frames                |
